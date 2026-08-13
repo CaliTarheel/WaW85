@@ -1,0 +1,11 @@
+# Fetched map data — regenerated on demand, and not ours to redistribute
+cache/
+
+# Generated boards
+out/
+
+node_modules/
+npm-debug.log*
+.DS_Store
+Thumbs.db
+*.local

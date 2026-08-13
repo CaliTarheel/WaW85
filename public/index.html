@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mapforge — World at War 85</title>
+<style>
+  :root {
+    --ground:#12150E; --panel:#1B1F14; --panel2:#252A1B; --line:#333A26;
+    --ink:#E6E5D6; --ink2:#A7AC93; --ink3:#7E836C; --accent:#E4643F;
+    --mono:"Cascadia Mono",Consolas,ui-monospace,monospace;
+    --disp:Bahnschrift,"DIN Alternate","Arial Narrow",system-ui,sans-serif;
+  }
+  * { box-sizing:border-box; }
+  html,body { margin:0; height:100%; background:var(--ground); color:var(--ink);
+              font-family:var(--disp); font-size:14px; overflow:hidden; }
+  #app { display:grid; grid-template-columns:minmax(320px,1fr) 380px minmax(320px,1.2fr); height:100%; }
+
+  .pane { position:relative; overflow:hidden; border-right:1px solid var(--line); }
+  .pane h2 { position:absolute; top:0; left:0; right:0; z-index:5; margin:0; padding:9px 14px;
+             font-size:11px; letter-spacing:.18em; text-transform:uppercase; color:var(--ink3);
+             background:linear-gradient(var(--ground),rgba(18,21,14,0)); pointer-events:none; }
+
+  /* ---- map ---- */
+  #map { position:absolute; inset:0; cursor:grab; background:#0d0f0a; }
+  #map.dragging { cursor:grabbing; }
+  #map canvas { position:absolute; inset:0; }
+  #foot { position:absolute; inset:0; pointer-events:none; }
+  #mapinfo { position:absolute; left:12px; bottom:12px; z-index:5; font-family:var(--mono);
+             font-size:11px; color:var(--ink2); background:rgba(18,21,14,.82); padding:6px 9px;
+             border:1px solid var(--line); line-height:1.6; }
+  #attrib { position:absolute; right:8px; bottom:8px; z-index:5; font-size:10px; color:var(--ink3);
+            background:rgba(18,21,14,.8); padding:3px 6px; }
+  #attrib a { color:var(--ink3); }
+
+  /* ---- controls ---- */
+  #controls { padding:44px 18px 18px; overflow-y:auto; background:var(--panel); }
+  .grp { border-top:1px solid var(--line); padding:14px 0; }
+  .grp:first-of-type { border-top:0; }
+  .grp > label { display:block; font-size:10.5px; letter-spacing:.14em; text-transform:uppercase;
+                 color:var(--ink3); margin-bottom:7px; }
+  input[type=text], input[type=number] {
+    width:100%; background:var(--panel2); border:1px solid var(--line); color:var(--ink);
+    font-family:var(--mono); font-size:13px; padding:7px 9px; }
+  input[type=range] { width:100%; accent-color:var(--accent); }
+  .row { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .slider { display:grid; grid-template-columns:1fr auto; gap:8px; align-items:center; margin-bottom:12px; }
+  .slider .v { font-family:var(--mono); font-size:12px; color:var(--ink2); min-width:44px; text-align:right; }
+  .slider .lab { grid-column:1/-1; font-size:11px; color:var(--ink3); margin-bottom:2px; }
+  button { width:100%; padding:11px; background:var(--accent); border:0; color:#1b0d07;
+           font-family:var(--disp); font-size:14px; letter-spacing:.1em; text-transform:uppercase;
+           font-weight:700; cursor:pointer; }
+  button:hover { filter:brightness(1.08); }
+  button:disabled { background:var(--panel2); color:var(--ink3); cursor:not-allowed; }
+  button.ghost { background:transparent; border:1px solid var(--line); color:var(--ink2); font-weight:400; }
+  .btns { display:grid; gap:8px; }
+  .preset { display:flex; flex-wrap:wrap; gap:6px; }
+  .preset button { width:auto; padding:5px 9px; font-size:11px; background:var(--panel2);
+                   color:var(--ink2); letter-spacing:.06em; font-weight:400; }
+
+  #log { font-family:var(--mono); font-size:11px; color:var(--ink3); white-space:pre-wrap;
+         max-height:150px; overflow-y:auto; line-height:1.55; }
+  #stats { font-family:var(--mono); font-size:11.5px; line-height:1.7; color:var(--ink2); }
+  #stats b { color:var(--ink); font-weight:400; }
+  .bar { display:flex; height:9px; margin:8px 0 10px; overflow:hidden; }
+  .bar span { display:block; }
+  .legend { display:grid; grid-template-columns:1fr 1fr; gap:2px 10px; font-family:var(--mono); font-size:11px; }
+  .legend i { display:inline-block; width:9px; height:9px; margin-right:6px; }
+
+  /* ---- preview ---- */
+  #preview { position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+             background:#0d0f0a; padding:44px 14px 14px; }
+  #preview img { max-width:100%; max-height:100%; box-shadow:0 8px 40px rgba(0,0,0,.6); }
+  #preview .empty { color:var(--ink3); font-size:13px; text-align:center; max-width:34ch; line-height:1.7; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div class="pane">
+    <h2>Footprint — drag to move, scroll to zoom</h2>
+    <div id="map"><canvas id="tiles"></canvas><canvas id="foot"></canvas></div>
+    <div id="mapinfo"></div>
+    <div id="attrib">basemap © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a></div>
+  </div>
+
+  <div id="controls" class="pane">
+    <h2>Board</h2>
+
+    <div class="grp">
+      <label>Name</label>
+      <input type="text" id="name" value="Rasdorf" maxlength="12">
+    </div>
+
+    <div class="grp">
+      <label>Centre</label>
+      <div class="row">
+        <input type="number" id="lat" step="0.0001" value="50.7180">
+        <input type="number" id="lon" step="0.0001" value="9.9100">
+      </div>
+    </div>
+
+    <div class="grp">
+      <label>Orientation — board top faces</label>
+      <div class="slider">
+        <input type="range" id="bearing" min="0" max="355" step="5" value="0">
+        <span class="v" id="bearingV">0°</span>
+      </div>
+      <div class="preset">
+        <button data-go="50.7180,9.9100">Rasdorf</button>
+        <button data-go="50.5520,9.6770">Fulda</button>
+        <button data-go="51.3200,9.4900">Kassel</button>
+        <button data-go="52.4400,9.6300">Leine</button>
+        <button data-go="50.5870,8.6780">Gießen</button>
+      </div>
+    </div>
+
+    <div class="grp">
+      <label>Hill detection</label>
+      <div class="slider">
+        <span class="lab">Minimum local relief to count as high ground</span>
+        <input type="range" id="minRelief" min="2" max="30" step="1" value="8">
+        <span class="v" id="minReliefV">8 m</span>
+      </div>
+      <div class="slider">
+        <span class="lab">Seed threshold — how sure before a hill starts</span>
+        <input type="range" id="hillHigh" min="0.4" max="0.9" step="0.01" value="0.66">
+        <span class="v" id="hillHighV">0.66</span>
+      </div>
+      <div class="slider">
+        <span class="lab">Grow threshold — how far the skirt spreads</span>
+        <input type="range" id="hillLow" min="0.2" max="0.8" step="0.01" value="0.48">
+        <span class="v" id="hillLowV">0.48</span>
+      </div>
+      <div class="slider">
+        <span class="lab">Relief ← → viewshed dominance</span>
+        <input type="range" id="reliefWeight" min="0" max="1" step="0.05" value="0.5">
+        <span class="v" id="reliefWeightV">0.50</span>
+      </div>
+    </div>
+
+    <div class="grp btns">
+      <button id="go">Make the board</button>
+      <button class="ghost" id="dlSvg" disabled>Download SVG</button>
+      <button class="ghost" id="dlJson" disabled>Download project file</button>
+    </div>
+
+    <div class="grp">
+      <label>Result</label>
+      <div id="stats">Nothing generated yet.</div>
+      <div class="bar" id="bar"></div>
+      <div class="legend" id="legend"></div>
+    </div>
+
+    <div class="grp">
+      <label>Log</label>
+      <div id="log">idle</div>
+    </div>
+  </div>
+
+  <div class="pane" style="border-right:0">
+    <h2>Board preview</h2>
+    <div id="preview"><div class="empty">Position the footprint on the left, then make the board.<br><br>Each board covers 2.86 × 1.95 km — 23 × 13 hexes at 150 m each.</div></div>
+  </div>
+
+</div>
+<script src="app.js"></script>
+</body>
+</html>

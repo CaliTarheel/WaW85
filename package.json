@@ -1,0 +1,15 @@
+{
+  "name": "waw85-mapforge",
+  "version": "0.1.0",
+  "description": "Turn any 2.86 x 1.95 km footprint on Earth into a World at War 85 hex board",
+  "license": "MIT",
+  "main": "lib/board.js",
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "start": "node server.js",
+    "gen": "node cli.js",
+    "verify": "node verify.js"
+  },
+  "keywords": ["hex", "wargame", "map-generator", "openstreetmap", "dem", "world-at-war-85"],
+  "repository": { "type": "git", "url": "https://github.com/CaliTarheel/WaW85.git" }
+}
