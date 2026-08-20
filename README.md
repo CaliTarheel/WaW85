@@ -1,5 +1,9 @@
 # Mapforge
 
+**Live Sites app:** <https://mapforge-waw85.srider.chatgpt.site/>
+
+**Sites source:** [`sites-app/`](sites-app/)
+
 Point a board-sized window at anywhere on Earth and get a *World at War 85* hex map out of it.
 
 Real elevation and real OpenStreetMap features go in; a 23 × 13 hex board with terrain, hills, roads, rivers and bridges comes out, as a layered SVG plus a project file you can reload.
@@ -124,3 +128,7 @@ TILE_URL='https://{your-provider}/{z}/{x}/{y}.png' TILE_ATTRIBUTION='© Someone'
 ## Licence
 
 MIT — see [LICENSE](LICENSE).
+
+Copyright © 2026 Stephen G. Rider. If you reuse or customize the project, keep
+the copyright and license notice and credit Stephen G. Rider. Contact:
+<rider.sg@gmail.com>.
